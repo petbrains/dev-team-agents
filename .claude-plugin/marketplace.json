@@ -1,0 +1,14 @@
+{
+  "name": "dev-team-agents-dev",
+  "owner": {
+    "name": "Roman Pluzhnikov",
+    "email": "pluzhnikov137@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "dev-team-agents",
+      "source": "./",
+      "description": "Local development version of dev-team-agents plugin"
+    }
+  ]
+}
