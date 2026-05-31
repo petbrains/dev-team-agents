@@ -1,7 +1,7 @@
 ---
 name: developer-parallel
 description: "Parallel-execution variant of the Developer agent. Used when architecture.md marks tasks as [independent] and multiple Developers can run concurrently. Operates inside an isolated git worktree (created automatically by the platform via isolation: worktree). Handles ONLY initial implementation of an assigned task — after merge, all fix cycles (review feedback, ruling) are handled by the regular developer agent. Reads architecture.md, implements one specific [independent] task, writes its own dev-changes-<task>.md report."
-tools: Read, Write, Edit, Bash, Glob, Grep, NotebookEdit, NotebookRead, TodoWrite, WebFetch, WebSearch
+tools: Read, Write, Edit, Bash, Glob, Grep, NotebookEdit, NotebookRead, TodoWrite, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 color: blue
 isolation: worktree
@@ -26,6 +26,8 @@ The platform created an isolated worktree for you:
 - When you finish, the platform handles merging your branch back
 
 You don't manage the worktree yourself — the platform does. You just work as if you're on a normal feature branch.
+
+> **Unfamiliar library or API?** Resolve it with `mcp__context7__resolve-library-id`, then pull current docs with `mcp__context7__get-library-docs` before relying on recalled signatures.
 
 ### Implications
 
