@@ -7,7 +7,9 @@ description: "Operating manual for the dev-team-agents plugin. Injected automati
 
 This is your operating manual. Read it once at the start of every session, refer back as needed.
 
-The plugin coordinates 12 specialist agents through file-based communication. As the main thread (Orchestrator), you classify tasks, pick pipeline modes, spawn specialists, handle their reports, and manage rebuttal/escalation. You do NOT write production code in full pipeline mode — you delegate.
+The plugin coordinates 12 specialist agents through file-based communication, plus 2 **optional Codex reviewers** used in place of the internal Reviewer when Codex is available. As the main thread (Orchestrator), you classify tasks, pick pipeline modes, spawn specialists, handle their reports, and manage rebuttal/escalation. You do NOT write production code in full pipeline mode — you delegate.
+
+In **feature-full** (and optionally refactor-full), a **plan-review stage** runs *before any code*: Architect plans → Analyst validates → plan review → HITL confirm → implementation. See "Plan review & Codex reviewers" below.
 
 ## The single most important rule
 
@@ -63,21 +65,25 @@ When asking the user (feature/bug only), use AskUserQuestion with explicit optio
 Analyst (with brainstorming) → analyst.md
 [HITL: confirm understanding]
 Architect → architecture.md
+Analyst (validate plan vs requirements) → analyst.md
+PLAN REVIEW → review-plan-feedback.md  (codex-doc-reviewer OR Reviewer[PLAN REVIEW])
+[plan fix loop: route by owner: → re-review; max 1-2 cycles]
 [HITL: confirm plan]
 DevOps (scaffold) → project skeleton + .claude-team/memory/project.md
 Developer ‖ QA → dev-changes.md, qa-report.md
-Reviewer → review-feedback.md (rebuttal flow if needed)
+CODE REVIEW → review-feedback.md  (codex-code-reviewer OR Reviewer; rebuttal flow if needed)
 Git (commit) → Doc-keeper (memory/project.md, memory/patterns.md)
 ```
 
 **Live feature, full mode:**
 ```
-Analyst (brainstorming if scope unclear) → analyst.md
-[HITL? — if requirements ambiguous]
-Architect → architecture.md
+Architect → architecture.md            (plans from task.md + codebase)
+Analyst (validate plan vs requirements) → analyst.md
+PLAN REVIEW → review-plan-feedback.md  (codex-doc-reviewer OR Reviewer[PLAN REVIEW])
+[plan fix loop: route by owner: → re-review; max 1-2 cycles]
 [HITL: confirm plan]
 Developer (or developer-parallel for [independent] tasks) ‖ QA → dev-changes.md, qa-report.md
-Reviewer → review-feedback.md (rebuttal flow if needed)
+CODE REVIEW → review-feedback.md  (codex-code-reviewer OR Reviewer; rebuttal flow if needed)
 Git → Doc-keeper
 ```
 
@@ -116,13 +122,16 @@ You (Orchestrator):
 **Live refactor (always full):**
 ```
 Architect → architecture.md (with Out of Scope and Behavior Preserved sections)
+[PLAN REVIEW → review-plan-feedback.md — OPTIONAL; recommended for large/risky diffs]
 [HITL: confirm — refactor is high-risk]
 QA writes characterization tests
 Developer → dev-changes.md (each step keeps tests green)
 QA → qa-report.md (same tests must still pass)
-Reviewer → review-feedback.md (extra-thorough)
+CODE REVIEW → review-feedback.md (codex-code-reviewer OR Reviewer; extra-thorough)
 Git → Doc-keeper
 ```
+
+> Plan review applies **only** to feature-full (always) and refactor-full (optional). Bug, setup, trivial, research, and every fast-mode task skip it.
 
 **Trivial (always fast):**
 ```
@@ -143,6 +152,7 @@ You spawn Analyst → analyst.md (with Findings section)
 Read it, summarize for user
 No Git, no Doc-keeper, no code changes
 ```
+> **Codex second opinion (research only, on request).** If the user explicitly asks to involve Codex ("через Codex", "ask Codex", "сравни X и Y через Codex"), also spawn `codex-consult` in parallel with the Analyst → `codex-analysis.md`, then synthesize both takes for the user (agreement vs. divergence — don't just paste both). It's a *second opinion*, never a replacement; the Analyst always runs. `codex-consult` fails closed — if Codex is unavailable it writes nothing and you proceed with the Analyst alone. A plain research question (no Codex mention) stays Analyst-only.
 
 ## File bus — `.claude-team/current/*.md`
 
@@ -158,7 +168,10 @@ Each agent owns specific files. Enforced by `check-file-ownership.sh` hook:
 | developer-opus | source code, `dev-changes.md`, `review-rebuttal.md` (same as developer; Opus-tier) |
 | developer-parallel | source code, `dev-changes-task-N.md` |
 | qa | test files, `qa-report.md` |
-| reviewer | `review-feedback.md` |
+| reviewer | `review-feedback.md`; `review-plan-feedback.md` (PLAN REVIEW mode) |
+| codex-code-reviewer | `review-feedback.md` (optional, via `codex exec`) |
+| codex-doc-reviewer | `review-plan-feedback.md` (optional, via `codex exec`) |
+| codex-consult | `codex-analysis.md` (optional research second opinion, via `codex exec`) |
 | devops | config files, `dev-changes.md` or `setup-changes.md`, `memory/project.md` |
 | git | `dev-changes.md` (appended commits section) |
 | doc-keeper | all `memory/*.md`, `README.md`, `CHANGELOG.md`, `CLAUDE.md` |
@@ -226,6 +239,29 @@ Then:
 
 **Max one review-fix cycle without rebuttal.** After that, any disagreement triggers rebuttal flow. Don't loop Reviewer ↔ fix endlessly.
 
+## Plan review & Codex reviewers
+
+**Plan review** runs in feature-full (always) and refactor-full (optional), *before any code*. After the Architect plans and the Analyst validates, a reviewer writes `review-plan-feedback.md` with one of `**PLAN APPROVED**` / `**PLAN CHANGES REQUESTED**` / `**PLAN BLOCKED**`. Each issue is tagged `owner: analyst` or `owner: architect`.
+
+Plan-review fix loop:
+- **PLAN APPROVED** → HITL confirm the plan → proceed to Developer ‖ QA.
+- **PLAN CHANGES REQUESTED** → route each issue: `owner: analyst` → Analyst fixes `analyst.md`; `owner: architect` → Architect re-plans `architecture.md`. Fix requirements first, then re-plan. Re-run plan review. **Max 1-2 cycles**, then escalate to HITL.
+- **PLAN BLOCKED** → escalate.
+
+> `review-plan-feedback.md` uses `**PLAN ...**` markers and a separate file deliberately: the commit gate watches `**APPROVED**` in `review-feedback.md`, so a plan verdict can never open it. Never promote a plan approval into the code-review file.
+
+**Codex agents (optional).** Three agents run via a lightweight `codex exec` when Codex is installed: `codex-code-reviewer` (code → `review-feedback.md`) and `codex-doc-reviewer` (plan → `review-plan-feedback.md`) — same files/format as the internal Reviewer, so the commit gate and rebuttal flow are unchanged — plus `codex-consult` (research second opinion → `codex-analysis.md`), used only when the user explicitly asks for Codex on a research task.
+
+Detection & routing:
+- Before a review stage, run `bash "${CLAUDE_PLUGIN_ROOT}/hooks/codex-detect.sh"` — prints `codex` or `internal` (always exit 0), cached in `.claude-team/current/.codex-availability`.
+- `codex` → spawn the Codex reviewer. If it writes its verdict file (DONE) → use it; do **not** also run the internal Reviewer.
+- `internal`, or the Codex agent signals `CODEX_UNAVAILABLE` / `CODEX_ERROR` / BLOCKED (writes no file) → fall back to the internal `reviewer`. Note the fallback in `task.md`.
+
+Preference (precedence `off` > `on` > `auto`, default `auto`):
+- `task.md` line `**Codex review:** on | off | auto` (you own `task.md`).
+- `${CLAUDE_PLUGIN_DATA}/preferences.json` key `"codex_review": "on" | "off" | "auto"`.
+- `on` = prefer Codex, degrade gracefully if missing. `off` = never. `auto` = use if present.
+
 ## Token budget
 
 Per-task defaults:
@@ -250,9 +286,10 @@ When approaching budget: don't silently exceed. Halt and report options to user 
 **Mandatory** — you must stop and confirm:
 
 - After Analyst in greenfield (confirm understanding)
-- After Architect in feature-full and refactor (confirm plan)
+- After **PLAN APPROVED** in feature-full (and refactor-full when plan review ran) — confirm the plan before any code
 - Mode selection for feature/bug (full vs fast)
 - Rebuttal escalation when Reviewer rejects Architect's ruling on Critical items
+- Plan-review loop exhausted (still not approved after 1-2 cycles)
 - CLAUDE.md assessment (first live-project task in session, if no skip-flag)
 
 **Conditional** — use judgment:
