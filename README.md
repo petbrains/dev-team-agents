@@ -2,7 +2,7 @@
 
 A Claude Code plugin that turns a single session into a coordinated dev team. The main thread becomes an **Orchestrator** that classifies each task, picks a pipeline, and dispatches specialists — Analyst, Architect, Developer (Sonnet or Opus tier), QA, Reviewer, Debugger, DevOps, Git, Doc-keeper. Agents communicate through a file bus under `.claude-team/`, not through inline chat — their contexts stay clean and the whole pipeline is auditable. A **plan-review stage** catches design defects before any code is written, and **OpenAI Codex** can serve as an optional second reviewer (plan and code) with automatic fallback to the internal Reviewer.
 
-> **Status: v1.0.0.** All agents, hooks, and skills are implemented and smoke-tested, plus a pre-code plan-review stage and optional Codex reviewers.
+> **Status: v1.1.0.** All agents, hooks, and skills are implemented and smoke-tested, plus a pre-code plan-review stage, optional Codex reviewers, and a `/task` command to start a work session from a list or doc link.
 
 ## Why
 
@@ -76,6 +76,22 @@ The **plan-review stage** (PLAN REVIEW above) runs in feature-full (always) and 
 Every subagent ends with one of four statuses: `DONE` / `DONE_WITH_CONCERNS` / `BLOCKED` / `NEEDS_CONTEXT`. The Orchestrator routes accordingly — context problems get more info, reasoning problems bump tier where one exists, plan problems escalate to user.
 
 Reviewer disagreements trigger a rebuttal protocol: Developer writes `review-rebuttal.md`, Architect arbitrates with `architect-ruling.md`, Reviewer does FINAL REVIEW. Max one cycle without rebuttal — no infinite review loops.
+
+## Commands
+
+| Command | What it does |
+|---------|--------------|
+| `/task <list or link>` | Start a work session without spelling out each step. Pass an inline task list, a URL, or a file path to a doc; the Orchestrator reads/normalizes it into a backlog (`.claude-team/current/backlog.md`), auto-groups items (related → one pipeline, independent → sequential), then runs each through the standard classify → mode → pipeline flow with all HITL gates. |
+
+Examples:
+
+```
+/task add a /users endpoint, write tests for it, update the README
+/task https://github.com/acme/repo/issues/42
+/task @docs/spec.md
+```
+
+Multi-task lists are grouped automatically — the Orchestrator only asks when a split is genuinely ambiguous. Each group keeps its own token budget and runs strictly sequentially (no two pipelines touching overlapping files at once).
 
 ## File bus — `.claude-team/`
 
@@ -200,7 +216,8 @@ dev-team-agents/
 │   └── build-codex-reviewers.md    # Spec to generate the two codex-* reviewer agents
 ├── scripts/
 │   └── init-claude-team.sh         # .claude-team/ initializer
-├── commands/                       # (empty — slash commands land later)
+├── commands/
+│   └── task.md                     # /task — start a session from a list or doc link
 ├── README.md
 ├── INSTALL.md                      # Detailed install + troubleshooting
 ├── CHANGELOG.md

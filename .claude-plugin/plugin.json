@@ -1,6 +1,6 @@
 {
   "name": "dev-team-agents",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A coordinated dev team for Claude Code. 12 core specialist agents (Orchestrator, Analyst, Architect, Developer, Developer-Opus, QA, Reviewer, Debugger, DevOps, Git, Doc-keeper, developer-parallel) plus meta-agent, with 3 optional Codex agents via `codex exec` — 2 reviewers (code + plan) plus codex-consult for an on-request second opinion on research questions — communicating via a file bus under .claude-team/. A plan-review stage runs before any code; Codex falls back to the internal Reviewer/Analyst when unavailable. Includes enforcement hooks (architecture-readiness, review gate, file ownership, token budget), an on-demand Codex detector, and 16 methodology skills (incl. sequential-thinking). Built on stable subagents.",
   "author": {
     "name": "Petbrains"
