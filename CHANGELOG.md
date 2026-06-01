@@ -8,6 +8,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Planned for upcoming versions — see README "Roadmap" section.
 
+## [1.1.0] — 2026-06-01
+
+### Added — `/task` slash command (first command in the plugin)
+
+- `commands/task.md` — a single entry point to start a work session without hand-writing the orchestration each time. Invoke as `/task <task list, or a URL / file path to a doc>`. The command runs in the main thread (Orchestrator) and:
+  - **Resolves the input** — `WebFetch` for URLs, `Read` for local files / `@`-references, inline text used directly, mixed inputs merged. Empty input asks the user for a list or link instead of guessing; auth-walled tracker links (GitHub/Jira/Notion) fall back to asking for pasted text.
+  - **Normalizes into a backlog** — distills discrete tasks into `.claude-team/current/backlog.md` (survives across pipelines) and mirrors them into `TodoWrite`.
+  - **Auto-groups** — related tasks → one pipeline; independent tasks → separate pipelines run strictly sequentially (no overlapping-file pipelines at once). Only asks when a split is genuinely ambiguous.
+  - **Runs each group through the standard flow** — classify (type × project) → mode select (full/fast, asking for feature/bug) → pipeline with the full file bus, 4-status protocol, rebuttal flow, per-group token budget, and all HITL gates. Defers pipeline mechanics to the operating manual / orchestrator prompt rather than restating them, to avoid drift.
+  - Ends with a roll-up: shipped / skipped / blocked, files touched, flagged follow-ups.
+- Removed the placeholder `commands/.gitkeep` now that the directory has real content.
+
+### Changed
+
+- `.claude-plugin/plugin.json` — version `1.0.0 → 1.1.0`.
+- `README.md` — new "Commands" section documenting `/task` with examples; status line bumped to v1.1.0; project-layout tree now lists `commands/task.md` instead of "(empty — slash commands land later)".
+
+### Added — Codex setup guide (doc)
+
+- `CODEX_INTEGRATION.md` — how to connect the plugin's optional Codex agents (the two reviewers + `codex-consult`) via the Codex CLI: install/login, the `~/.codex/config.toml` model gotcha (ChatGPT-account logins need `gpt-5.5`, not `gpt-5`), and verification via `hooks/codex-detect.sh` + a `codex exec` smoke test. Documents the existing fail-closed behavior shipped in 1.0.0.
+
 ## [1.0.0] — 2026-05-31
 
 ### Added — pre-code plan-review stage
@@ -513,7 +534,9 @@ This is the first of three planned skill rounds. Round 1 covers TDD and verifica
 - Plugin can be loaded with `claude --plugin-dir .` and produces a "plugin loaded" message at session start.
 - All other intended functionality (Orchestrator, file-based bus, hooks for enforcement, etc.) is documented in `ARCHITECTURE-v2.1.md` but not yet implemented.
 
-[Unreleased]: https://github.com/TBD/dev-team-agents/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/TBD/dev-team-agents/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/TBD/dev-team-agents/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/TBD/dev-team-agents/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/TBD/dev-team-agents/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/TBD/dev-team-agents/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/TBD/dev-team-agents/compare/v0.8.0...v0.8.1
