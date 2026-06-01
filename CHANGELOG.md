@@ -8,6 +8,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Planned for upcoming versions — see README "Roadmap" section.
 
+## [1.0.0] — 2026-05-31
+
+### Added — pre-code plan-review stage
+
+- New canonical full-feature flow: **Architect → Analyst (validate plan) → PLAN REVIEW → HITL confirm → Developer ‖ QA → CODE REVIEW**. The Analyst now has a guaranteed seat validating the plan against requirements before any code is written.
+- `reviewer` gains a third mode, **`[PLAN REVIEW]`**: reads `architecture.md` + `analyst.md`, writes `review-plan-feedback.md` with markers `**PLAN APPROVED**` / `**PLAN CHANGES REQUESTED**` / `**PLAN BLOCKED**`. Every issue is tagged `owner: analyst` or `owner: architect` for routing.
+- New file-bus artifact `review-plan-feedback.md` — a **separate file with separate markers** so the commit gate (which watches `**APPROVED**` in `review-feedback.md`) can never be opened by a plan verdict.
+- Orchestrator: new "Plan-review routing & fix loop" (route by `owner:`, max 1–2 cycles, then HITL escalation) and a HITL gate after PLAN APPROVED. Plan review applies to feature-full (always) and refactor-full (optional); bug / setup / trivial / research / fast-mode skip it.
+
+### Added — optional Codex reviewers (`codex exec`)
+
+- `hooks/codex-detect.sh` — on-demand availability probe (not registered in `hooks.json`). Prints `codex` or `internal`, caches to `.claude-team/current/.codex-availability`. Override precedence `off > on > auto` via `task.md` (`**Codex review:**`) or `preferences.json` (`"codex_review"`).
+- `prompts/codex-code-review.md` and `prompts/codex-plan-review.md` — adversarial review prompt templates for `codex exec` (stdin invocation, `--sandbox read-only`, JSON output contract, confidence 0–100).
+- `codex-tasks/build-codex-reviewers.md` — self-contained spec to generate the two reviewer agents (`codex-code-reviewer`, `codex-doc-reviewer`) with Codex itself.
+- `agents/codex-consult.md` + `prompts/codex-consult.md` — optional Codex **second opinion** for research tasks. On explicit user request ("через Codex", "ask Codex", "сравни X и Y через Codex"), runs alongside the internal Analyst → `codex-analysis.md`; the Orchestrator then synthesizes both takes (agreement vs. divergence). Second opinion, not a replacement — the Analyst always runs; request-only (plain research stays Analyst-only); fails closed to Analyst-alone when Codex is unavailable. Ownership case added to `validate-file-ownership.sh`.
+- Orchestrator: "Codex reviewers (detection + routing + fallback)" — Codex reviewers write the same files in the same format as the internal Reviewer (commit gate & rebuttal flow unchanged), and **fail closed** to the internal Reviewer on any error.
+- `hooks/validators/validate-file-ownership.sh` — explicit ownership cases for `codex-code-reviewer` (→ `review-feedback.md`), `codex-doc-reviewer` (→ `review-plan-feedback.md`), and `reviewer` (+ `review-plan-feedback.md`).
+
+### Added — sequential-thinking skill
+
+- Promoted `sequential-thinking` into `skills/` (with its `references/`) — a structured-reasoning harness around `mcp__sequential-thinking__sequentialthinking`. Wired into the `architect`, `analyst`, and `reviewer` frontmatter.
+
+### Fixed — MCP tools unreachable from subagents
+
+- Subagents with an explicit `tools:` allowlist could not call MCP tools that weren't listed. Added the MCP tool names to the relevant agents: `mcp__context7__resolve-library-id` + `mcp__context7__get-library-docs` for `developer` / `developer-opus` / `developer-parallel`; `mcp__sequential-thinking__sequentialthinking` for `architect` / `analyst` / `reviewer`. Added usage notes in each agent body.
+
+### Changed
+
+- `.claude-plugin/plugin.json`: version `0.9.0 → 1.0.0`; description now mentions the 3 optional Codex agents (2 reviewers + codex-consult), plan-review stage, and 16 skills; added `plan-review` and `codex` keywords.
+- README and the `using-dev-team-agents` operating manual updated: new plan-review flow, `review-plan-feedback.md`, Codex detection/routing/fallback + on/off/auto flag, MCP allowlist note, skill count 15 → 16.
+
 ## [0.9.0] — 2026-05-09
 
 ### Added — bootstrap skill (operating manual auto-injected)

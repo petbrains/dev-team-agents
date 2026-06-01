@@ -73,6 +73,16 @@ case "$agent_name" in
         ;;
     reviewer)
         matches "current/review-feedback\\.md" && exit 0
+        matches "current/review-plan-feedback\\.md" && exit 0
+        ;;
+    codex-code-reviewer)
+        matches "current/review-feedback\\.md" && exit 0
+        ;;
+    codex-doc-reviewer)
+        matches "current/review-plan-feedback\\.md" && exit 0
+        ;;
+    codex-consult)
+        matches "current/codex-analysis\\.md" && exit 0
         ;;
     developer|developer-opus)
         # developer-opus is the Opus-tier variant with identical file-ownership rules
